@@ -1,0 +1,156 @@
+﻿generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ScriptVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum NotificationType {
+  SYSTEM
+  SCRIPT
+  USER
+}
+
+model User {
+  id                  String         @id @default(cuid())
+  email               String         @unique
+  username            String         @unique
+  passwordHash        String
+  role                UserRole       @default(USER)
+  bio                 String?
+  avatarUrl           String?
+  emailVerifiedAt     DateTime?
+  verificationToken   String?        @unique
+  resetToken          String?        @unique
+  resetTokenExpiresAt DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  scripts             Script[]
+  favorites           Favorite[]
+  notifications       Notification[]
+  sessions            Session[]
+  logs                Log[]
+
+  @@index([role])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  scripts     Script[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Script {
+  id             String           @id @default(cuid())
+  ownerId        String
+  categoryId     String?
+  title          String
+  slug           String           @unique
+  summary        String
+  tags           String[]
+  visibility     ScriptVisibility @default(PUBLIC)
+  isPublished    Boolean          @default(true)
+  isFeatured     Boolean          @default(false)
+  isObfuscated   Boolean          @default(false)
+  downloadCount  Int              @default(0)
+  favoriteCount  Int              @default(0)
+  viewCount      Int              @default(0)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  owner          User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  category       Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  versions       Version[]
+  favorites      Favorite[]
+  notifications  Notification[]
+  logs           Log[]
+
+  @@index([ownerId, createdAt])
+  @@index([categoryId])
+  @@index([visibility, isPublished])
+}
+
+model Version {
+  id          String   @id @default(cuid())
+  scriptId    String
+  version     String
+  changelog   String?
+  content     String   @db.Text
+  contentHash String
+  createdAt   DateTime @default(now())
+  script      Script   @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+
+  @@unique([scriptId, version])
+  @@index([scriptId, createdAt])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  scriptId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  script    Script   @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scriptId])
+  @@index([scriptId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  scriptId  String?
+  type      NotificationType
+  title     String
+  message   String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  script    Script?          @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  userId        String
+  refreshToken  String   @unique
+  ipAddress     String?
+  userAgent     String?
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  userId     String?
+  scriptId   String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  script    Script?  @relation(fields: [scriptId], references: [id], onDelete: SetNull)
+
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
+}

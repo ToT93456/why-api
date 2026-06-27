@@ -1,0 +1,18 @@
+﻿{
+  "name": "lua-script-hub",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/web",
+    "apps/api"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:api": "npm --workspace apps/api run dev",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "db:generate": "npm --workspace apps/api run db:generate",
+    "db:migrate": "npm --workspace apps/api run db:migrate",
+    "db:seed": "npm --workspace apps/api run db:seed"
+  }
+}
